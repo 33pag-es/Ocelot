@@ -1,0 +1,22 @@
+# WireGuard tunnel from the tracker server to the Gazelle site server.
+#
+# Install wireguard-tools, then:
+#   umask 077
+#   wg genkey | tee /etc/wireguard/tracker.key | wg pubkey > /etc/wireguard/tracker.pub
+# Copy this file to /etc/wireguard/wg0.conf, fill in the keys and the site's
+# public IP, and enable it before Docker starts (README):
+#   systemctl enable --now wg-quick@wg0
+#
+# Addresses match MYSQL_HOST/GAZELLE_HOST (site) and TRACKER_TUNNEL_IP (this
+# server) in .env.
+[Interface]
+Address = 10.33.0.2/24
+ListenPort = 51820
+PrivateKey = <contents of /etc/wireguard/tracker.key>
+
+[Peer]
+# Gazelle site server
+PublicKey = <site server's site.pub>
+AllowedIPs = 10.33.0.1/32
+Endpoint = <site server's public IPv4>:51820
+PersistentKeepalive = 25

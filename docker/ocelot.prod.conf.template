@@ -24,6 +24,11 @@ mysql_db = @MYSQL_DATABASE@
 report_password = @REPORT_PASSWORD@
 site_password = @SITE_PASSWORD@
 
+# Gazelle's freeleech-token callback (tools.php?action=ocelot), over the
+# WireGuard tunnel. site_service is the port number.
+site_host = @GAZELLE_HOST@
+site_service = @GAZELLE_PORT@
+
 peers_timeout = 7200
 del_reason_lifetime = 86400
 reap_peers_interval = 1800

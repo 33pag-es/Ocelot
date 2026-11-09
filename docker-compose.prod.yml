@@ -1,35 +1,36 @@
-# Optional production tracker overlay.
+# Production tracker server.
 #
-# Build/start the Gazelle production stack plus Ocelot:
-#   cd ../Gazelle-33 && docker compose -f docker-compose.prod.yml -f ../Ocelot/docker-compose.prod.yml up -d --build
+# Ocelot runs on its own server and reaches the Gazelle site server over a
+# WireGuard tunnel: MySQL at MYSQL_HOST:3306 and Gazelle's freeleech-token
+# callback at GAZELLE_HOST:GAZELLE_PORT. Gazelle calls Ocelot back on
+# TRACKER_TUNNEL_IP:34000. Caddy on this host serves the public announce URL
+# and proxies to TRACKER_BIND:34000 (docker/Caddyfile.example).
 #
-# Ocelot is built from the sibling Ocelot checkout. Set OCELOT_IMAGE to use a
-# prebuilt registry image instead. Tracker and database secrets are loaded from
-# ../Ocelot/.env through env_file; copy ../Ocelot/.env.example to .env first.
-# TRACKER_SECRET and TRACKER_REPORTKEY must each be 32 characters and must
-# match the values in lib/override.config.php.
+#   cp .env.example .env    # fill in every value
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Docker-published ports bypass host firewalls such as ufw, so never bind
+# these to a public address. Docker must start after wg-quick@wg0 (see
+# README): a port bound to a missing address fails and is not retried.
+name: ocelot-prod
 
 services:
   ocelot:
     build:
-      context: ../Ocelot
+      context: .
       dockerfile: Dockerfile
-    image: ${OCELOT_IMAGE:-gazelle-33-ocelot:prod}
+    image: ${OCELOT_IMAGE:-ocelot:prod}
     restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_started
-      migrate:
-        condition: service_completed_successfully
     ports:
-      - ${TRACKER_BIND:-127.0.0.1}:${TRACKER_PORT:-34000}:34000
+      # Caddy on this host.
+      - ${TRACKER_BIND:-127.0.0.1}:34000:34000
+      # Gazelle on the site server, over WireGuard only.
+      - ${TRACKER_TUNNEL_IP:-10.33.0.2}:34000:34000
     volumes:
-      - ../Ocelot/docker/ocelot.prod.conf.template:/srv/ocelot.conf.template:ro
-      - ../Ocelot/docker/entrypoint-prod.sh:/srv/entrypoint-prod.sh:ro
+      - ./docker/ocelot.prod.conf.template:/srv/ocelot.conf.template:ro
+      - ./docker/entrypoint-prod.sh:/srv/entrypoint-prod.sh:ro
     tmpfs:
       - /tmp/ocelot
     env_file:
-      - ../Ocelot/.env
-    environment:
-      - MYSQL_HOST=mysql
+      - .env
     entrypoint: ["/bin/bash", "/srv/entrypoint-prod.sh"]

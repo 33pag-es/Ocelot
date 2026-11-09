@@ -1,0 +1,33 @@
+# Host reverse proxy for the tracker server.
+#
+# Install Caddy on the host, copy this file to /etc/caddy/Caddyfile, replace
+# the hostname and email, and reload Caddy. The tracker hostname is a plain
+# DNS record (an A record only, no AAAA; DNS-only if the zone is on
+# Cloudflare) pointing at this server. Caddy obtains the certificate; ports
+# 80 and 443 must be open.
+#
+# docker-compose.prod.yml publishes Ocelot on 127.0.0.1:34000 (TRACKER_BIND).
+# Caddy replaces any X-Forwarded-For sent by the client with the client's
+# address, and Ocelot uses that as the peer IP. Do not add trusted_proxies:
+# Caddy would then append to the client's header and Ocelot would use the
+# client-supplied first entry.
+{
+	email admin@example.com
+}
+
+tracker.example.com {
+	# Expose only announce and scrape. Ocelot's update and report actions use
+	# the same /<key>/<action> shape and are for Gazelle, which calls them
+	# over WireGuard.
+	# Ocelot tracks IPv4 peers only; answer IPv6 with a bencoded failure that
+	# BitTorrent clients display, instead of Ocelot's parse error.
+	@not_ipv4 not client_ip 0.0.0.0/0
+	@tracker path_regexp ^/[A-Za-z0-9]{32}/(announce|scrape)$
+	handle @tracker {
+		respond @not_ipv4 "d14:failure reason37:This tracker accepts IPv4 peers only.e" 200
+		reverse_proxy 127.0.0.1:34000
+	}
+	handle {
+		respond 404
+	}
+}

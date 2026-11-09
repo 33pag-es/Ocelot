@@ -46,37 +46,54 @@ docker build . -t ocelot
 docker run -v $(pwd)/ocelot.conf:/srv/ocelot.conf ocelot
 ```
 
-### Production Compose overlay
+### Production tracker server
 
-`docker-compose.prod.yml` adds Ocelot to the Gazelle production stack.
-It is an overlay, so use it from the sibling Gazelle checkout:
+`docker-compose.prod.yml` runs Ocelot on its own server, joined to the
+Gazelle site server by a WireGuard tunnel (site `10.33.0.1`, this server
+`10.33.0.2`). Over the tunnel only, Ocelot uses MySQL on the site server,
+Gazelle calls Ocelot on `TRACKER_TUNNEL_IP:34000`, and Ocelot calls
+Gazelle's freeleech-token callback at `GAZELLE_HOST:GAZELLE_PORT`. Caddy on
+this server serves the public announce URL.
 
-```bash
-cd ../Gazelle-33
-cp ../Ocelot/.env.example ../Ocelot/.env
-# Fill in the Ocelot database user/password and 32-character tracker secrets.
-docker compose -f docker-compose.prod.yml -f ../Ocelot/docker-compose.prod.yml up -d --build
-```
+1. WireGuard: copy `docker/wg0.conf.example` to `/etc/wireguard/wg0.conf`,
+   fill it in, and `systemctl enable --now wg-quick@wg0`.
+2. Start Docker after the tunnel. A port bound to the tunnel address fails
+   if `wg0` does not exist yet, and Docker does not retry it:
 
-`../Ocelot/.env` is loaded by Compose through `env_file`; it contains
-`OCELOT_MYSQL_*`, `MYSQL_DATABASE`, `TRACKER_SECRET`, and
-`TRACKER_REPORTKEY`. Keep those values in sync with `Gazelle-33/.env` and
-`Gazelle-33/lib/override.config.php`. The Gazelle MySQL init script creates
-the optional Ocelot MySQL account when `OCELOT_MYSQL_PASSWORD` is set in
-the Gazelle `.env`. That dedicated account has per-table grants matching
-the queries in `src/db.cpp`, including `DROP` on `xbt_files_users` for the
-startup `TRUNCATE`.
+   ```bash
+   mkdir -p /etc/systemd/system/docker.service.d
+   printf '[Unit]\nWants=wg-quick@wg0.service\nAfter=wg-quick@wg0.service\n' \
+       > /etc/systemd/system/docker.service.d/wireguard.conf
+   systemctl daemon-reload
+   ```
 
-The overlay builds this repository and publishes it on
-`TRACKER_BIND:TRACKER_PORT` (default `127.0.0.1:34000`, set in the Gazelle
-`.env`). In Gazelle, set `TRACKER_HOST=ocelot` and `TRACKER_PORT=34000`
-for internal tracker calls, and `TRACKER_PUBLIC_HOST` to the external
-announce URL. Ocelot trusts `X-Forwarded-For` by default, so keep it on
-loopback behind the announce TLS proxy. If you publish it directly
-(`TRACKER_BIND=0.0.0.0`), set `OCELOT_IGNORE_XFF=1` in `.env`, which starts
-Ocelot with `--ignore-xff`.
-Set `OCELOT_IMAGE` in the Gazelle `.env` to use a prebuilt image instead of
-building from source.
+3. Configure and start Ocelot:
+
+   ```bash
+   cp .env.example .env    # fill in every value
+   docker compose -f docker-compose.prod.yml up -d --build
+   ```
+
+4. Caddy: copy `docker/Caddyfile.example` to `/etc/caddy/Caddyfile`, set
+   the tracker hostname, and reload. The tracker hostname is an A record
+   (no AAAA; DNS-only on Cloudflare). Caddy exposes only
+   `/<passkey>/announce` and `/<passkey>/scrape` and refuses IPv6 peers.
+5. Firewall: SSH; `80/tcp` and `443/tcp` from anywhere; `51820/udp` from
+   the site server's public IP. Docker-published ports bypass ufw, which is
+   why Ocelot is bound only to loopback and the tunnel address.
+
+`.env` must match the site server: `OCELOT_MYSQL_USER`/`OCELOT_MYSQL_PASSWORD`
+as in its `.env`, and the 32-character `TRACKER_SECRET`/`TRACKER_REPORTKEY`
+as in its `lib/override.config.php`, where `TRACKER_HOST` is this server's
+tunnel IP. The site's MySQL creates the Ocelot account with per-table grants
+matching the queries in `src/db.cpp`, including `DROP` on `xbt_files_users`
+for the startup `TRUNCATE`, and accepts it only from this server's tunnel IP.
+
+`GAZELLE_PORT` must be a number: the image has no `/etc/services`, so a
+service name such as `http` does not resolve. Ocelot trusts
+`X-Forwarded-For`, so keep it on loopback behind Caddy; set
+`OCELOT_IGNORE_XFF=1` only if port 34000 is published directly. Set
+`OCELOT_IMAGE` to use a prebuilt image instead of building this checkout.
 
 ### Standalone Installation
 
