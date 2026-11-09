@@ -63,7 +63,8 @@ docker compose -f docker-compose.prod.yml -f ../Ocelot/docker-compose.prod.yml u
 `TRACKER_REPORTKEY`. Keep those values in sync with `Gazelle-33/.env` and
 `Gazelle-33/lib/override.config.php`. The Gazelle MySQL init script creates
 the optional Ocelot MySQL account when `OCELOT_MYSQL_PASSWORD` is set in
-the Gazelle `.env`.
+the Gazelle `.env`. That dedicated account has DML plus database-scoped
+`DROP`, which Ocelot needs for its startup `TRUNCATE xbt_files_users`.
 
 The overlay builds this repository and publishes `TRACKER_PORT` (default
 34000). In Gazelle, set `TRACKER_HOST=ocelot` and `TRACKER_PORT=34000`
