@@ -47,4 +47,11 @@ until nc -z "$MYSQL_HOST" 3306; do
     sleep 2
 done
 
-exec /srv/ocelot -c "$CONFIG"
+# Ocelot trusts X-Forwarded-For unless told otherwise. Set OCELOT_IGNORE_XFF=1
+# when the tracker port is published directly instead of behind a proxy.
+args=(-c "$CONFIG")
+if [ "${OCELOT_IGNORE_XFF:-0}" = "1" ]; then
+    args+=(--ignore-xff)
+fi
+
+exec /srv/ocelot "${args[@]}"

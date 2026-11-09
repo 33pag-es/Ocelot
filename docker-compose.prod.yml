@@ -22,7 +22,7 @@ services:
       migrate:
         condition: service_completed_successfully
     ports:
-      - ${TRACKER_PORT:-34000}:34000
+      - ${TRACKER_BIND:-127.0.0.1}:${TRACKER_PORT:-34000}:34000
     volumes:
       - ../Ocelot/docker/ocelot.prod.conf.template:/srv/ocelot.conf.template:ro
       - ../Ocelot/docker/entrypoint-prod.sh:/srv/entrypoint-prod.sh:ro

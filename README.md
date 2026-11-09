@@ -63,14 +63,18 @@ docker compose -f docker-compose.prod.yml -f ../Ocelot/docker-compose.prod.yml u
 `TRACKER_REPORTKEY`. Keep those values in sync with `Gazelle-33/.env` and
 `Gazelle-33/lib/override.config.php`. The Gazelle MySQL init script creates
 the optional Ocelot MySQL account when `OCELOT_MYSQL_PASSWORD` is set in
-the Gazelle `.env`. That dedicated account has DML plus database-scoped
-`DROP`, which Ocelot needs for its startup `TRUNCATE xbt_files_users`.
+the Gazelle `.env`. That dedicated account has per-table grants matching
+the queries in `src/db.cpp`, including `DROP` on `xbt_files_users` for the
+startup `TRUNCATE`.
 
-The overlay builds this repository and publishes `TRACKER_PORT` (default
-34000). In Gazelle, set `TRACKER_HOST=ocelot` and `TRACKER_PORT=34000`
+The overlay builds this repository and publishes it on
+`TRACKER_BIND:TRACKER_PORT` (default `127.0.0.1:34000`, set in the Gazelle
+`.env`). In Gazelle, set `TRACKER_HOST=ocelot` and `TRACKER_PORT=34000`
 for internal tracker calls, and `TRACKER_PUBLIC_HOST` to the external
-announce URL. Ocelot trusts `X-Forwarded-For` by default; put it behind the
-announce TLS proxy, or run it with `--ignore-xff` if it is directly exposed.
+announce URL. Ocelot trusts `X-Forwarded-For` by default, so keep it on
+loopback behind the announce TLS proxy. If you publish it directly
+(`TRACKER_BIND=0.0.0.0`), set `OCELOT_IGNORE_XFF=1` in `.env`, which starts
+Ocelot with `--ignore-xff`.
 Set `OCELOT_IMAGE` in the Gazelle `.env` to use a prebuilt image instead of
 building from source.
 
