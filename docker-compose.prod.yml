@@ -1,0 +1,35 @@
+# Optional production tracker overlay.
+#
+# Build/start the Gazelle production stack plus Ocelot:
+#   cd ../Gazelle-33 && docker compose -f docker-compose.prod.yml -f ../Ocelot/docker-compose.prod.yml up -d --build
+#
+# Ocelot is built from the sibling Ocelot checkout. Set OCELOT_IMAGE to use a
+# prebuilt registry image instead. Tracker and database secrets are loaded from
+# ../Ocelot/.env through env_file; copy ../Ocelot/.env.example to .env first.
+# TRACKER_SECRET and TRACKER_REPORTKEY must each be 32 characters and must
+# match the values in lib/override.config.php.
+
+services:
+  ocelot:
+    build:
+      context: ../Ocelot
+      dockerfile: Dockerfile
+    image: ${OCELOT_IMAGE:-gazelle-33-ocelot:prod}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - ${TRACKER_PORT:-34000}:34000
+    volumes:
+      - ../Ocelot/docker/ocelot.prod.conf.template:/srv/ocelot.conf.template:ro
+      - ../Ocelot/docker/entrypoint-prod.sh:/srv/entrypoint-prod.sh:ro
+    tmpfs:
+      - /tmp/ocelot
+    env_file:
+      - ../Ocelot/.env
+    environment:
+      - MYSQL_HOST=mysql
+    entrypoint: ["/bin/bash", "/srv/entrypoint-prod.sh"]

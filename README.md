@@ -46,6 +46,33 @@ docker build . -t ocelot
 docker run -v $(pwd)/ocelot.conf:/srv/ocelot.conf ocelot
 ```
 
+### Production Compose overlay
+
+`docker-compose.prod.yml` adds Ocelot to the Gazelle production stack.
+It is an overlay, so use it from the sibling Gazelle checkout:
+
+```bash
+cd ../Gazelle-33
+cp ../Ocelot/.env.example ../Ocelot/.env
+# Fill in the Ocelot database user/password and 32-character tracker secrets.
+docker compose -f docker-compose.prod.yml -f ../Ocelot/docker-compose.prod.yml up -d --build
+```
+
+`../Ocelot/.env` is loaded by Compose through `env_file`; it contains
+`OCELOT_MYSQL_*`, `MYSQL_DATABASE`, `TRACKER_SECRET`, and
+`TRACKER_REPORTKEY`. Keep those values in sync with `Gazelle-33/.env` and
+`Gazelle-33/lib/override.config.php`. The Gazelle MySQL init script creates
+the optional Ocelot MySQL account when `OCELOT_MYSQL_PASSWORD` is set in
+the Gazelle `.env`.
+
+The overlay builds this repository and publishes `TRACKER_PORT` (default
+34000). In Gazelle, set `TRACKER_HOST=ocelot` and `TRACKER_PORT=34000`
+for internal tracker calls, and `TRACKER_PUBLIC_HOST` to the external
+announce URL. Ocelot trusts `X-Forwarded-For` by default; put it behind the
+announce TLS proxy, or run it with `--ignore-xff` if it is directly exposed.
+Set `OCELOT_IMAGE` in the Gazelle `.env` to use a prebuilt image instead of
+building from source.
+
 ### Standalone Installation
 
 * Build the binary
