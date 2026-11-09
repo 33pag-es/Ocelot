@@ -3,8 +3,10 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <chrono>
+#include <cstring>
 #include <limits>
 #include <map>
 #include <set>
@@ -496,11 +498,16 @@ std::string worker::announce(
 
     logger->debug("announce: tor={} user={} up={} down={} left={} corrupt={}", tor.id, userid, ctx->uploaded, ctx->downloaded, ctx->left, ctx->corrupt);
 
-    xxh::hash_state_t<64> state(xxh_seed);
-    state.update(peer_id);
-    state.update(ap.addr_port, sizeof(ap.addr_port));
-    state.update(&userid, sizeof(userid_t));
-    const peerkey_t peer_key = state.digest();
+    constexpr size_t peer_id_len = 20;
+    std::array<unsigned char, peer_id_len + sizeof(ap.addr_port) + sizeof(userid_t)> peer_key_data{};
+    std::memcpy(peer_key_data.data(), peer_id.data(), peer_id_len);
+    std::memcpy(peer_key_data.data() + peer_id_len, ap.addr_port, sizeof(ap.addr_port));
+    std::memcpy(
+        peer_key_data.data() + peer_id_len + sizeof(ap.addr_port),
+        &userid,
+        sizeof(userid_t)
+    );
+    const peerkey_t peer_key = XXH64(peer_key_data.data(), peer_key_data.size(), xxh_seed);
 
     if (ctx->event_completed) {
         // Don't update <snatched> here as we may decide to use other conditions later on

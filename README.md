@@ -11,6 +11,7 @@ It supports requests over TCP and can only track IPv4 peers.
 * [libev](http://software.schmorp.de/pkg/libev.html) (4.0+ required)
 * [libfmt](https://github.com/fmtlib/fmt) (8.1+ required)
 * [MySQL++](http://tangentsoft.net/mysql++/) (3.2.0+ required)
+* [xxHash](https://github.com/Cyan4973/xxHash) (0.8+ development headers)
 * [MySQL Client](https://dev.mysql.com/downloads/c-api/) (8.0+ recommended)
 * [jemalloc](http://jemalloc.net/) (5.0+ optional, but strongly recommended)
 * [TCMalloc](http://goog-perftools.sourceforge.net/doc/tcmalloc.html) (optional, alternative to jemalloc)
@@ -29,6 +30,7 @@ sudo apt-get install \
     libfmt-dev \
     libjemalloc-dev \
     libmysql++-dev \
+    libxxhash-dev \
 	netcat-traditional \
     pkg-config
 cmake . -B build

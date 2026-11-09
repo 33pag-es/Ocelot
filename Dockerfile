@@ -13,6 +13,7 @@ RUN apt-get update \
         libfmt-dev \
         libjemalloc-dev \
         libmysql++-dev \
+        libxxhash-dev \
         netcat-traditional \
         pkg-config \
     && rm -rf /var/lib/apt/lists/*

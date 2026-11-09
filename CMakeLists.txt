@@ -45,6 +45,10 @@ find_package(Threads REQUIRED)
 
 find_package(MYSQL REQUIRED)
 find_package(MYSQLPP REQUIRED)
+find_library(XXHASH_LIBRARY NAMES xxhash)
+if(NOT XXHASH_LIBRARY)
+    message(FATAL_ERROR "libxxhash was not found")
+endif()
 
 find_package(LibEv REQUIRED)
 include_directories(${LIBEV_INCLUDE_DIR})
@@ -64,6 +68,7 @@ SET(LINK_LIBRARIES
     ${LIBEV_LIBRARY}
     ${LIBFMT_IBRARY}
     ${MYSQLPP_LIBRARY}
+    ${XXHASH_LIBRARY}
     Threads::Threads
 )
 

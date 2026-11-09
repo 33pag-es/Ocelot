@@ -6,7 +6,6 @@
 #include <atomic>
 
 #include "user.h"
-#include "xxhash.hpp"
 
 typedef union {
     struct {

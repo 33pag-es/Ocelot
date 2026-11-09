@@ -10,6 +10,7 @@
 #define OCELOT_VERSION "3.1.0"
 
 #include <time.h>
+#include <xxhash.h>
 
 #include <atomic>
 #include <map>
@@ -22,7 +23,7 @@
 #include "peer.h"
 
 typedef uint32_t torid_t;
-typedef xxh::hash_t<64> peerkey_t;
+typedef XXH64_hash_t peerkey_t;
 typedef std::map<peerkey_t, peer> peer_list;
 
 enum freetype { NORMAL, FREE, NEUTRAL };
